@@ -17,21 +17,39 @@ const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology:
 
 
 async function run() {
-    const usersCollection = client.db('coolCarUserDB').collection('users')
-    try {
+  const usersCollection = client.db('coolCarUserDB').collection('users')
+  try {
 
-    }
-    finally {
-    }
+    // users read data
+    app.get('/users', async (req, res) => {
+      const cursor = usersCollection.find({});
+      const users = await cursor.toArray();
+      res.send(users);
+    })
+
+    // data  for users
+    app.post('/users', async (req, res) => {
+      const user = req.body;
+      //console.log(user);
+      const result = usersCollection.insertOne(user);
+      res.send(result);
+
+      //products
+      
+
+    })
   }
-  
-  run().catch(err => console.error(err))
+  finally {
+  }
+}
+
+run().catch(err => console.error(err))
 
 
 app.get('/', (req, res) => {
-    res.send('Cool Car Server Is Running !')
-  })
-  
-  app.listen(port, () => {
-    console.log(`Cool Car Server Is Running On ${port}`)
-  })
+  res.send('Cool Car Server Is Running !')
+})
+
+app.listen(port, () => {
+  console.log(`Cool Car Server Is Running On ${port}`)
+})
