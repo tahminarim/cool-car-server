@@ -17,21 +17,26 @@ const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology:
 
 function verifyJWT(req, res, next) {
   const authHeader = req.headers.authorization;
-  
-  console.log('jwt inside token',req.headers.authorization)
+  // console.log(authHeader)
+
+  console.log('jwt inside token', req.headers.authorization)
   if (!authHeader) {
-    return res.status(401).send('unauthorized access');
-}
+    return res.status(401).send('not authorized ');
+  }
 
-const token = authHeader.split(' ')[1];
-
-jwt.verify(token, process.env.ACCESS_TOKEN, function (err, decoded) {
+  const token = authHeader.split(' ')[1];
+  //console.log(token)
+  jwt.verify(token, process.env.ACCESS_TOKEN, function (err, decoded) {
     if (err) {
-        return res.status(403).send({ message: 'forbidden access' })
+      console.log(err)
+      return res.status(403).send({ message: 'access-forbidden ' })
+
     }
+    // console.log(err)
     req.decoded = decoded;
+    console.log('rq decode is', req.decoded)
     next();
-})
+  })
 
 }
 
@@ -40,20 +45,33 @@ async function run() {
   try {
     const usersCollection = client.db('coolCarUserDB').collection('users')
     const productsCollection = client.db('coolCarUserDB').collection('products')
+    const electricCarCollection = client.db('coolCarUserDB').collection('electric')
+    const hybridCarCollection = client.db('coolCarUserDB').collection('hybrid')
+
+    const essenceCarCollection = client.db('coolCarUserDB').collection('essence')
+    const bookingCollection = client.db('coolCarUserDB').collection('booking')
 
 
     //jwt
 
     app.get('/jwt', async (req, res) => {
       const email = req.query.email;
+      //console.log(email)
       const query = { email: email };
+      //console.log(query)
       const user = await usersCollection.findOne(query);
+      //console.log(user)
       if (user) {
-        const token = jwt.sign({ email }, process.env.ACCESS_TOKEN, { expiresIn: '20' });
+        //console.log(user)
+        const token = jwt.sign({ email }, process.env.ACCESS_TOKEN, { expiresIn: '200h' });
+        console.log(token)
         return res.send({ accessToken: token });
       }
-      console.log(user)
-      res.status(403).send({ accessToken: '' })
+      //console.log(user)
+      else {
+        res.status(403).send({ accessToken: '' })
+      }
+
     })
 
     //verfy admin
@@ -61,12 +79,35 @@ async function run() {
       const decodedEmail = req.decoded.email;
       const query = { email: decodedEmail };
       const user = await usersCollection.findOne(query);
-    
+
       if (user?.role !== 'Admin') {
         return res.status(403).send({ message: 'forbidden access' })
       }
       next();
     }
+
+    //verfy admin
+    app.get('/users/admin/:email', async (req, res) => {
+      const email = req.params.email;
+      const query = { email }
+      const user = await usersCollection.findOne(query);
+      res.send({ isAdmin: user?.role === 'Admin' });
+  })
+
+    //user udate
+    app.put('/users/admin/:id', async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: ObjectId(id) }
+      const options = { upsert: true };
+      const updatedDoc = {
+        $set: {
+          verify: 'verifieduser'
+        }
+      }
+      const result = await usersCollection.updateOne(filter, updatedDoc, options);
+      res.send(result);
+    })
+ 
 
 
     // users read data
@@ -74,7 +115,7 @@ async function run() {
       const email = req.query.email;
       //console.log('token',req.headers.authorization)
       const cursor = usersCollection.find({});
-     console.log('token is users is',req.headers.authorization)
+      //  console.log('token is users is', req.headers.authorization)
       const users = await cursor.toArray();
       res.send(users);
     })
@@ -89,43 +130,26 @@ async function run() {
     })
 
 
-      app.get('/allproducts', async (req, res) => {
-        const query = {};
-        const products = await productsCollection.find(query).toArray();
-        res.send(products);
+    app.get('/allproducts', async (req, res) => {
+      const query = {};
+      const products = await productsCollection.find(query).toArray();
+      res.send(products);
     })
 
 
-    app.get('/allproducts/:fuel', async (req, res) => {
-      
-      const fuel = req.query.fuel;
-      const query={}
-      //console.log(query)
-      const cars = await productsCollection.find(query).toArray();
-       const carQuery={Hybrid: fuel}
-       const hybridcars= await productsCollection.find(query).toArray();
-       console.log(hybridcars)
-     // const cursor = productsCollection.find(query);
-      //const cars = await cursor.toArray();
-      // console.log(cars)
-      // if(fuel==='Hybrid'){
-      //   req.send(cars)
-      //   console.log('hybrid cars',cars)
-      // }
-      //res.send(cars); 
+    // products with jwt
+    app.get('/allproducts', verifyJWT, async (req, res) => {
+      const email = req.query.email;
+      console.log(email)
+      const decodedEmail = req.decoded.email;
+      console.log(decodedEmail)
+      if (email !== decodedEmail) {
+        return res.status(403).send({ message: 'access-forbidden' });
+      }
+      const query = { email: email };
+      const products = await productsCollection.find(query).toArray();
+      res.send(products);
     })
-
-    //products
-    // app.get('/allproducts', verifyJWT, async (req, res) => {
-    //   const email = req.query.email;
-    //   const decodedEmail = req.decoded.email;
-    //   if (email !== decodedEmail) {
-    //     return res.status(403).send({ message: 'access-forbidden' });
-    //   }
-    //   const query = { email: email };
-    //   const products = await productsCollection.find(query).toArray();
-    //   res.send(products);
-    // })
 
     app.post('/products', async (req, res) => {
       const product = req.body;
@@ -134,14 +158,85 @@ async function run() {
       res.send(result);
     })
 
+
+    //electriccars api
+    app.get('/electriccar', async (req, res) => {
+      const query = {};
+      const products = await electricCarCollection.find(query).toArray();
+      res.send(products);
+    })
+    app.post('/electriccar', async (req, res) => {
+      const product = req.body;
+      // console.log(product)
+      const result = await electricCarCollection.insertOne(product);
+      res.send(result);
+    })
+
+
+    //hybrid cars
+    app.get('/hybridcar', async (req, res) => {
+      const query = {};
+      const products = await hybridCarCollection.find(query).toArray();
+      res.send(products);
+    })
+
+    app.post('/hybridcar', async (req, res) => {
+      const product = req.body;
+      // console.log(product)
+      const result = await hybridCarCollection.insertOne(product);
+      res.send(result);
+    })
+
+    //essence car
+    app.get('/essencecar', async (req, res) => {
+      const query = {};
+      const products = await essenceCarCollection.find(query).toArray();
+      res.send(products);
+    })
+
+    app.post('/essencecar', async (req, res) => {
+      const product = req.body;
+      // console.log(product)
+      const result = await essenceCarCollection.insertOne(product);
+      res.send(result);
+    })
+
+
+
+    //booking
+
+    app.post('/booking', async (req, res) => {
+      const booking = req.body;
+      // console.log(booking)
+      const result = await bookingCollection.insertOne(booking);
+      res.send(result);
+    })
+
+
+// product delete
     app.delete('/products/:id', async (req, res) => {
       const id = req.params.id;
       const filter = { _id: ObjectId(id) };
       const result = await productsCollection.deleteOne(filter);
       res.send(result);
     })
+
+       // user delate
+
+       app.delete('/users/:id', async (req, res) => {
+        //const email = req.params.email;
+        //const query = { email }
+         const id = req.params.id;
+        // console.log(id)
+        const filter = { _id: ObjectId(id) };
+       // const result = await usersCollection.deleteOne(query);
+        const result1 = await usersCollection.deleteOne(filter);
+        res.send(result1);
+    })
+    
   }
   finally {
+  
   }
 }
 
