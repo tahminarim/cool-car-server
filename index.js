@@ -52,8 +52,8 @@ async function run() {
 
     const essenceCarCollection = client.db('coolCarUserDB').collection('essence')
     const bookingCollection = client.db('coolCarUserDB').collection('booking')
-    const paymentsCollection=client.db('drOnline').collection('payments');
-
+    const paymentsCollection = client.db('coolCarUserDB').collection('payments')
+    const advertiseCollection = client.db('coolCarUserDB').collection('advertise')
 
     //jwt
 
@@ -95,23 +95,23 @@ async function run() {
       const query = { email }
       const user = await usersCollection.findOne(query);
       res.send({ isAdmin: user?.role === 'Admin' });
-  })
-
-      //verfy buyer
-      app.get('/users/buyer/:email', async (req, res) => {
-        const email = req.params.email;
-        const query = { email }
-        const user = await usersCollection.findOne(query);
-        res.send({ isBuyer: user?.role === 'Buyer' });
     })
 
-        //verfy seller
-        app.get('/users/seller/:email', async (req, res) => {
-          const email = req.params.email;
-          const query = { email }
-          const user = await usersCollection.findOne(query);
-          res.send({ isSeller: user?.role === 'Seller' });
-      })
+    //verfy buyer
+    app.get('/users/buyer/:email', async (req, res) => {
+      const email = req.params.email;
+      const query = { email }
+      const user = await usersCollection.findOne(query);
+      res.send({ isBuyer: user?.role === 'Buyer' });
+    })
+
+    //verfy seller
+    app.get('/users/seller/:email', async (req, res) => {
+      const email = req.params.email;
+      const query = { email }
+      const user = await usersCollection.findOne(query);
+      res.send({ isSeller: user?.role === 'Seller' });
+    })
 
 
 
@@ -130,19 +130,21 @@ async function run() {
     })
 
 
-    // app.put('/allproducts/:email', async (req, res) => {
-    //   const email = req.params.id;
-    //   const filter = { _id: ObjectId(id) }
-    //   const options = { upsert: true };
-    //   const updatedDoc = {
-    //     $set: {
-    //       verify: 'verifieduser'
-    //     }
-    //   }
-    //   const result = await productsCollection.updateOne(filter, updatedDoc, options);
-    //   res.send(result);
-    // })
- 
+    //products advertise update
+    app.put('/products/:id', async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: ObjectId(id) }
+      const options = { upsert: true };
+      const updatedDoc = {
+        $set: {
+          advertise: 'advertise'
+        }
+      }
+      const result = await productsCollection.updateOne(filter, updatedDoc, options);
+      res.send(result);
+    })
+
+
 
 
     // users read data
@@ -163,6 +165,23 @@ async function run() {
       res.send(result);
 
     })
+    //for avertise
+    app.get('/advertise', async (req, res) => {
+      const query = {};
+      const products = await advertiseCollection.find(query).toArray();
+      res.send(products);
+    })
+
+    app.post('/advertise', async (req, res) => {
+      const product = req.body;
+      // console.log(product)
+      const result = advertiseCollection.insertOne(product);
+      res.send(result);
+
+    })
+
+
+
 
 
     app.get('/allproducts', async (req, res) => {
@@ -247,6 +266,15 @@ async function run() {
       res.send(bookings);
     })
 
+    app.get('/bookings/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const booking = await bookingCollection.findOne(query);
+      //console.log('book book',booking)
+      res.send(booking);
+    })
+
+
     app.post('/booking', async (req, res) => {
       const booking = req.body;
       // console.log(booking)
@@ -255,7 +283,9 @@ async function run() {
     })
 
 
-// product delete
+
+
+    // product delete
     app.delete('/products/:id', async (req, res) => {
       const id = req.params.id;
       const filter = { _id: ObjectId(id) };
@@ -263,13 +293,13 @@ async function run() {
       res.send(result);
     })
 
-       // user delate
+    // user delate
 
-       app.delete('/users/:id', async (req, res) => {
-         const id = req.params.id;
-        const filter = { _id: ObjectId(id) };
-        const result1 = await usersCollection.deleteOne(filter);
-        res.send(result1);
+    app.delete('/users/:id', async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: ObjectId(id) };
+      const result1 = await usersCollection.deleteOne(filter);
+      res.send(result1);
     })
 
 
@@ -282,36 +312,36 @@ async function run() {
       const amount = price * 100;
 
       const paymentIntent = await stripe.paymentIntents.create({
-          currency: 'euro',
-          amount: amount,
-          "payment_method_types": [
-              "card"
-          ]
+        currency: 'euro',
+        amount: amount,
+        "payment_method_types": [
+          "card"
+        ]
       });
       res.send({
-          clientSecret: paymentIntent.client_secret,
+        clientSecret: paymentIntent.client_secret,
       });
-  });
+    });
 
-  app.post('/payments', async (req, res) =>{
+    app.post('/payments', async (req, res) => {
       const payment = req.body;
       const result = await paymentsCollection.insertOne(payment);
       const id = payment.bookingId
-      const filter = {_id: ObjectId(id)}
+      const filter = { _id: ObjectId(id) }
       const updatedDoc = {
-          $set: {
-              paid: true,
-              transactionId: payment.transactionId
-          }
+        $set: {
+          paid: true,
+          transactionId: payment.transactionId
+        }
       }
       const updatedResult = await bookingCollection.updateOne(filter, updatedDoc)
       res.send(result);
-  })
+    })
 
-    
+
   }
   finally {
-  
+
   }
 }
 
