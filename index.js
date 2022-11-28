@@ -94,6 +94,18 @@ async function run() {
       res.send({ isAdmin: user?.role === 'Admin' });
   })
 
+      //verfy buyer
+      app.get('/users/buyer/:email', async (req, res) => {
+        const email = req.params.email;
+        const query = { email }
+        const user = await usersCollection.findOne(query);
+        res.send({ isBuyer: user?.role === 'Buyer' });
+    })
+
+
+
+
+
     //user udate
     app.put('/users/admin/:id', async (req, res) => {
       const id = req.params.id;
@@ -107,6 +119,20 @@ async function run() {
       const result = await usersCollection.updateOne(filter, updatedDoc, options);
       res.send(result);
     })
+
+
+    // app.put('/allproducts/:email', async (req, res) => {
+    //   const email = req.params.id;
+    //   const filter = { _id: ObjectId(id) }
+    //   const options = { upsert: true };
+    //   const updatedDoc = {
+    //     $set: {
+    //       verify: 'verifieduser'
+    //     }
+    //   }
+    //   const result = await productsCollection.updateOne(filter, updatedDoc, options);
+    //   res.send(result);
+    // })
  
 
 
@@ -224,12 +250,8 @@ async function run() {
        // user delate
 
        app.delete('/users/:id', async (req, res) => {
-        //const email = req.params.email;
-        //const query = { email }
          const id = req.params.id;
-        // console.log(id)
         const filter = { _id: ObjectId(id) };
-       // const result = await usersCollection.deleteOne(query);
         const result1 = await usersCollection.deleteOne(filter);
         res.send(result1);
     })
